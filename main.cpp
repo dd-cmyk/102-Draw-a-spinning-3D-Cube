@@ -55,8 +55,35 @@ void rotateZ3D(float theta, float (&nodes)[8][3])
 
 }
 
+void setWall(sf::VertexArray &wall, float (&nodes)[8][3], int w)
+{
+    std::vector<int> p = {0,0,0,0};
+        switch(w) // choose which wall to set shape
+        {
+            case 0: p = {0, 2, 3, 1}; break; //Left Wall
+            case 1: p = {1, 3, 7, 5}; break; //Front Wall
+            case 2: p = {3, 2, 6, 7}; break; //Down Wall
+            case 3: p = {1, 0, 4, 5}; break; //Upper Wall
+            case 4: p = {4, 6, 2, 0}; break; //Back Wall
+            case 5: p = {4, 6, 7, 5}; break; //Left Wall
+
+        }
+            wall[0].position = sf::Vector2f(nodes[p[0]][0]+MOVE, nodes[p[0]][1]+MOVE);
+            wall[1].position = sf::Vector2f(nodes[p[1]][0]+MOVE, nodes[p[1]][1]+MOVE);
+            wall[2].position = sf::Vector2f(nodes[p[2]][0]+MOVE, nodes[p[2]][1]+MOVE);
+            wall[3].position = sf::Vector2f(nodes[p[3]][0]+MOVE, nodes[p[3]][1]+MOVE);
+
+            wall[0].texCoords = sf::Vector2f(0, 0);
+            wall[1].texCoords = sf::Vector2f(0, 100);
+            wall[2].texCoords = sf::Vector2f(100, 100);
+            wall[3].texCoords = sf::Vector2f(100, 0);
+
+}
+
 double mx=0,my=0,mx0=0,my0=0; //globals with mouse position
-int MODE = 2;
+int MODE = 1;
+
+bool TEXTURED = false;
 
 int main()
 {
@@ -102,6 +129,7 @@ int main()
             {
                 if (event.key.code == sf::Keyboard::Num2) MODE = 2;
                 if (event.key.code == sf::Keyboard::Num1) MODE = 1;
+                if (event.key.code == sf::Keyboard::Num0) TEXTURED = !TEXTURED;
             }
 
 
@@ -130,7 +158,53 @@ int main()
 
         //all the rotation code before drawing code!
         window.clear(sf::Color::Black);
-        //draw nodes
+
+
+        if (TEXTURED){
+
+        //create a test rect(using vertex array)
+
+        sf::Texture texture;
+        if(!texture.loadFromFile("wall.jpg"))
+        {
+            return -1;
+        }
+
+        sf::VertexArray wall(sf::Quads, 4);
+
+        float sum[6][2]; // first is z and the other one the wall number;
+
+
+        int wall_cords[6][4] = {{0, 2, 3, 1}, {1, 3, 7, 5}, {3, 2, 6, 7}, {1, 0, 4, 5}, {4, 6, 2, 0}, {4, 6, 7, 5}};
+
+        int index[6] = {0,1,2,3,4,5};
+
+
+        for (int i=0; i<6; i++)
+        {
+            sum[i][1] = i;
+            sum[i][0] = 0;
+
+            for (int j = 0; j<4; j++)
+            {
+                int index = wall_cords[i][j];
+                sum[i][0]+=nodes[index][2];
+            }
+        }
+
+        std::sort(index, index + 6, [&](int n1, int n2){ return sum[n1][0] > sum[n2][0]; }); //This was copy-pasted, soon to understand
+
+
+
+        for (int i = 0; i < 6; i++)
+        {
+            int num = sum[index[i]][1];
+            setWall(wall, nodes, num);
+            window.draw(wall, &texture);
+        }
+        }
+
+                //draw nodes
         sf::CircleShape node_draw(5);
         node_draw.setFillColor(sf::Color::Green);
         node_draw.setOrigin(-MOVE, -MOVE);
@@ -139,8 +213,16 @@ int main()
             node_draw.setPosition(nodes[i][0]-node_draw.getRadius(), nodes[i][1]-node_draw.getRadius());
             window.draw(node_draw);
         }
+        //setWall(wall, nodes, 5);
+        //window.draw(wall);
 
-        //draw edges
+        //The closer something is to me, the z coordinate is higher
+
+        //Sum the Z coordinates and draw nodes with the higher ones first
+        //Take from nodes[p[i]][2] sum this and the one with the most sum gets draw
+        //Make an array with sum and p number and then sort it using the sum and draw it using the p number
+
+                //draw edges
         sf::VertexArray edge_draw(sf::Lines, 2);
         for (int i = 0; i<sizeof(edges)/sizeof(edges[0]); i++)
         {
@@ -151,6 +233,9 @@ int main()
 
             window.draw(edge_draw);
         }
+
+
+
 
 
         window.display();
